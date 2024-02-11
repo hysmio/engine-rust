@@ -1,9 +1,7 @@
-use std::sync::Arc;
-
 use winit::{
     self,
     dpi::PhysicalSize,
-    event::*,
+    event::{self, *},
     event_loop::*,
     keyboard::{Key, NamedKey},
     window::*,
@@ -19,6 +17,9 @@ struct State<'window> {
     // it gets dropped after it as the surface contains
     // unsafe references to the window's resources.
     window: &'window Window,
+
+    // SELF
+    color: wgpu::Color,
 }
 
 impl<'window> State<'window> {
@@ -93,6 +94,13 @@ impl<'window> State<'window> {
             config,
             size,
             window,
+
+            color: wgpu::Color {
+                r: 0.1,
+                g: 0.2,
+                b: 0.3,
+                a: 1.0,
+            },
         }
     }
 
@@ -110,15 +118,59 @@ impl<'window> State<'window> {
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool {
-        false
+        match event {
+            WindowEvent::MouseInput { button, state, .. } => true,
+            WindowEvent::CursorMoved { position, .. } => {
+                self.color = wgpu::Color {
+                    r: position.x / self.size.width as f64,
+                    g: 1.0 - (position.x / self.size.width as f64),
+                    b: position.y / self.size.height as f64,
+                    a: 1.0,
+                };
+                self.window.request_redraw();
+                true
+            }
+            _ => false,
+        }
     }
 
     fn update(&mut self) {
-        todo!()
+        // todo!()
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        todo!()
+        let output = self.surface.get_current_texture()?;
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
+
+        {
+            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(self.color),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+        }
+
+        self.queue.submit(std::iter::once(encoder.finish()));
+        output.present();
+
+        Ok(())
     }
 }
 
@@ -137,12 +189,25 @@ pub async fn run() {
             } if window_id == state.window().id() => {
                 if !state.input(event) {
                     match event {
-                        WindowEvent::Resized(physical_size) => state.resize(*physical_size),
+                        WindowEvent::Resized(physical_size) => {
+                            state.resize(*physical_size);
+                            state.window().request_redraw();
+                        }
                         WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                             state.resize(PhysicalSize::new(
                                 (state.size.width as f64 * *scale_factor) as u32,
                                 (state.size.height as f64 * *scale_factor) as u32,
                             ));
+                            state.window().request_redraw();
+                        }
+                        WindowEvent::RedrawRequested => {
+                            state.update();
+                            match state.render() {
+                                Ok(_) => println!("Rendered!"),
+                                Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
+                                Err(wgpu::SurfaceError::OutOfMemory) => target.exit(),
+                                Err(e) => eprintln!("{:?}", e),
+                            }
                         }
                         WindowEvent::CloseRequested
                         | WindowEvent::KeyboardInput {
