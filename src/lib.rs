@@ -1,7 +1,7 @@
 use winit::{
     self,
     dpi::PhysicalSize,
-    event::{self, *},
+    event::*,
     event_loop::*,
     keyboard::{Key, NamedKey},
     window::*,
@@ -12,7 +12,7 @@ struct State<'window> {
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
-    size: winit::dpi::PhysicalSize<u32>,
+    size: PhysicalSize<u32>,
     // The window must be declared after the surface so
     // it gets dropped after it as the surface contains
     // unsafe references to the window's resources.
@@ -119,7 +119,7 @@ impl<'window> State<'window> {
 
     fn input(&mut self, event: &WindowEvent) -> bool {
         match event {
-            WindowEvent::MouseInput { button, state, .. } => true,
+            WindowEvent::MouseInput {   .. } => true,
             WindowEvent::CursorMoved { position, .. } => {
                 self.color = wgpu::Color {
                     r: position.x / self.size.width as f64,
@@ -139,35 +139,46 @@ impl<'window> State<'window> {
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+        // get a frame to render to, -> SurfaceTexture
         let output = self.surface.get_current_texture()?;
+
+        // create default texture view, we'll manipulate it later
         let view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
+        // create the command encoder, this builds a command buffer to send commands to the GPU
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
 
-        {
-            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+        // create the render pass, this is the actual command to the GPU
+        let render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Render Pass"),
+            color_attachments: &[
+                Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(self.color),
                         store: wgpu::StoreOp::Store,
                     },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-        }
+                }),
+            ],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
 
+        // drop the render pass to release the borrow on the encoder
+        drop(render_pass);
+
+        // submit it to the queue
         self.queue.submit(std::iter::once(encoder.finish()));
+
+        // present the output
         output.present();
 
         Ok(())
