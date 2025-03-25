@@ -1,3 +1,6 @@
+use std::io;
+use std::io::Write;
+use wgpu::{Device, PipelineLayoutDescriptor, TextureFormat};
 use winit::{
     self,
     dpi::PhysicalSize,
@@ -20,6 +23,76 @@ struct State<'window> {
 
     // SELF
     color: wgpu::Color,
+
+    // Pipeline
+    pipeline: wgpu::RenderPipeline,
+
+    // Pipeline
+    pipeline2: wgpu::RenderPipeline,
+
+    current_pipeline: u8,
+}
+
+fn read_file(name: &str) -> io::Result<String> {
+    std::fs::read_to_string(name)
+}
+
+fn create_pipeline(name: &str, shader: &str, device: &Device, format: TextureFormat) -> wgpu::RenderPipeline {
+    let shader_source = match read_file(shader) {
+        Ok(source) => source,
+        Err(err) => panic!("Failed to read shader: {}\n{}", shader, err),
+    };
+
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor{
+        label: Some(name),
+        source: wgpu::ShaderSource::Wgsl(shader_source.into()),
+    });
+
+    let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor{
+        label: Some("Render Pipeline Layout"),
+        bind_group_layouts: &[],
+        push_constant_ranges: &[],
+    });
+
+    let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
+        label: Some("Render Pipeline"),
+        layout: Some(&render_pipeline_layout),
+        vertex: wgpu::VertexState{
+            module: &shader,
+            entry_point: "vs_main", // 1
+            buffers: &[], // 2
+        },
+        fragment: Some(wgpu::FragmentState{
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState{
+                format,
+                blend: Some(wgpu::BlendState::REPLACE),
+                write_mask: wgpu::ColorWrites::ALL,
+            })]
+        }),
+        primitive: wgpu::PrimitiveState{
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: Some(wgpu::Face::Back),
+            // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+            polygon_mode: wgpu::PolygonMode::Fill,
+            // Requires Features::DEPTH_CLIP_CONTROL
+            unclipped_depth: false,
+            // Requires Features::CONSERVATIVE_RASTERIZATION
+            conservative: false,
+        },
+        depth_stencil: None, // 1
+        multisample: wgpu::MultisampleState{
+            count: 1, // 2
+            mask: !0, // 3
+            alpha_to_coverage_enabled: false, // 4
+        },
+        multiview: None,
+    });
+
+    render_pipeline
 }
 
 impl<'window> State<'window> {
@@ -87,6 +160,9 @@ impl<'window> State<'window> {
 
         surface.configure(&device, &config);
 
+        let render_pipeline = create_pipeline("Shader 1", "./src/shader.wgsl", &device, surface_format);
+        let render_pipeline_2 = create_pipeline("Shader 2", "./src/shader2.wgsl", &device, surface_format);
+
         State {
             surface,
             device,
@@ -101,6 +177,11 @@ impl<'window> State<'window> {
                 b: 0.3,
                 a: 1.0,
             },
+
+            pipeline: render_pipeline,
+            pipeline2: render_pipeline_2,
+
+            current_pipeline: 1,
         }
     }
 
@@ -108,7 +189,7 @@ impl<'window> State<'window> {
         &self.window
     }
 
-    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+    pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
         if (new_size.width > 0 && new_size.height > 0) && (new_size != self.size) {
             self.size = new_size;
             self.config.width = new_size.width;
@@ -154,26 +235,35 @@ impl<'window> State<'window> {
                 label: Some("Render Encoder"),
             });
 
-        // create the render pass, this is the actual command to the GPU
-        let render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("Render Pass"),
-            color_attachments: &[
-                Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(self.color),
-                        store: wgpu::StoreOp::Store,
-                    },
-                }),
-            ],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            occlusion_query_set: None,
-        });
+        {
 
-        // drop the render pass to release the borrow on the encoder
-        drop(render_pass);
+            // create the render pass, this is the actual command to the GPU
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Render Pass"),
+                color_attachments: &[
+                    // This is what @location(0) in the fragment shader targets
+                    Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(self.color),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    }),
+                ],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            let pipeline = match self.current_pipeline {
+                1 => &self.pipeline,
+                2 => &self.pipeline2,
+                _ => &self.pipeline,
+            };
+            render_pass.set_pipeline(pipeline); // 2
+            render_pass.draw(0..3, 0..1); // 3
+        }
 
         // submit it to the queue
         self.queue.submit(std::iter::once(encoder.finish()));
@@ -214,12 +304,44 @@ pub async fn run() {
                         WindowEvent::RedrawRequested => {
                             state.update();
                             match state.render() {
-                                Ok(_) => println!("Rendered!"),
+                                Ok(_) => (),
                                 Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
                                 Err(wgpu::SurfaceError::OutOfMemory) => target.exit(),
                                 Err(e) => eprintln!("{:?}", e),
                             }
                         }
+                        WindowEvent::KeyboardInput {
+                            event:
+                            KeyEvent {
+                                state: ElementState::Pressed,
+                                logical_key,
+                                ..
+                            },
+                            ..
+                        } => {
+                            match logical_key {
+                                Key::Named(NamedKey::Space) => {
+                                    if (state.current_pipeline == 1) {
+                                        state.current_pipeline = 2;
+                                    } else {
+                                        state.current_pipeline = 1;
+                                    }
+                                    state.window.request_redraw();
+                                    println!("Updated current pipeline: {}", state.current_pipeline);
+                                },
+                                key => {
+                                    match key.to_text() {
+                                        Some(text) => print!("{}", text),
+                                        None => print!("{:?}", key),
+                                    }
+                                }
+                            }
+
+                            match io::stdout().flush() {
+                                Ok(_) => (),
+                                Err(_) => target.exit(),
+                            }
+                        },
                         WindowEvent::CloseRequested
                         | WindowEvent::KeyboardInput {
                             event:
