@@ -15,12 +15,14 @@ fn vs_main(
     let y = f32(i32(in_vertex_index & 1u) * 2 - 1) * 0.5;
     out.clip_position = vec4<f32>(x, y, 0.0, 1.0);
     out.vert_pos = out.clip_position.xyz;
-    out.color = out.vert_pos;
+    out.color.x = smoothstep(-0.5, 0.5, x);
+    out.color.y = smoothstep(-0.5, 0.5, y);
+    out.color.z = 0.66f;
     return out;
 }
 
 // Fragment Shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return vec4<f32>(in.color.x * 1.5, in.color.y * 0.97, in.color.z * 0.11, 1.0);
+    return vec4<f32>(in.color.x * 1.5, in.color.y * 0.97, in.color.z * 0.99, 1.0);
 }

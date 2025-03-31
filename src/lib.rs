@@ -321,7 +321,7 @@ pub async fn run() {
                         } => {
                             match logical_key {
                                 Key::Named(NamedKey::Space) => {
-                                    if (state.current_pipeline == 1) {
+                                    if state.current_pipeline == 1 {
                                         state.current_pipeline = 2;
                                     } else {
                                         state.current_pipeline = 1;
