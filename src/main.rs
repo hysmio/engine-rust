@@ -1,6 +1,5 @@
-use engine_rust::run;
-use pollster;
+use tutorial7_instancing::run;
 
 fn main() {
-    pollster::block_on(run());
+    run().unwrap();
 }
