@@ -1,7 +1,7 @@
 [package]
-name = "tutorial7-instancing"
+name = "engine-rust"
 version = "0.1.0"
-authors = ["Ben Hansen <https://github.com/sotrh>"]
+authors = ["Hayden Sim <https://github.com/hysmio>"]
 edition = "2018"
 
 [lib]
@@ -11,10 +11,13 @@ crate-type = ["cdylib", "rlib"]
 anyhow = "1.0"
 bytemuck = { version = "1.16", features = [ "derive" ] }
 cgmath = "0.18"
+dear-imgui-rs = "0.15.0"
+dear-imgui-wgpu = "0.15.0"
+dear-imgui-winit = "0.15.0"
 env_logger = "0.10"
 log = "0.4"
 pollster = "0.3"
-wgpu = "26.0.1"
+wgpu = "29.0.3"
 winit = { version = "0.30", features = ["android-native-activity"] }
 
 [dependencies.image]

@@ -1,4 +1,4 @@
-use tutorial7_instancing::run;
+use engine_rust::run;
 
 fn main() {
     run().unwrap();
