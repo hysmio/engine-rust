@@ -127,6 +127,14 @@ impl ApplicationHandler<Engine<'static>> for App {
             None => return,
         };
 
+        // Handle the event with ImGui first (window-local path)
+        let window = match engine.windows.get_mut(window_id) {
+            Some(window) => window,
+            None => return,
+        };
+
+        window.handle_event(event.clone());
+
         match event {
             WindowEvent::CloseRequested => {
                 engine.windows.remove(window_id);
@@ -152,7 +160,9 @@ impl ApplicationHandler<Engine<'static>> for App {
                     }
                 }
                 None => {
-                    // log::error!("Unable to render");
+                    if let Some(window) = engine.windows.get(window_id) {
+                        window.window.request_redraw();
+                    }
                 }
             },
             WindowEvent::CursorMoved { position, .. } => {

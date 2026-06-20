@@ -3,7 +3,7 @@ use winit::{
     dpi::PhysicalSize,
     window::{Window, WindowId},
 };
-
+use winit::event::WindowEvent;
 use crate::renderer::{GpuContext, Renderer};
 
 pub struct WindowService<'windows> {
@@ -49,7 +49,7 @@ impl<'windows> WindowService<'windows> {
             self.focused = None;
         }
         removed
-    }
+    }   
 
     pub fn set_focused(&mut self, id: WindowId, focused: bool) {
         if let Some(previous_id) = self.focused.filter(|previous_id| *previous_id != id) {
@@ -107,5 +107,12 @@ impl<'window> WindowState<'window> {
     pub fn resize(&mut self, ctx: &GpuContext, size: PhysicalSize<u32>) {
         self.size = size;
         self.renderer.resize(ctx, size);
+    }
+
+    pub fn handle_event(&mut self, event: WindowEvent) {
+        self.renderer.imgui.handle_window_event(
+            &self.window,
+            &event,
+        );
     }
 }

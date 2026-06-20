@@ -12,7 +12,7 @@ use wgpu::{
     MemoryBudgetThresholds, NoopBackendOptions, SurfaceConfiguration, TextureFormat,
 };
 use winit::{dpi::PhysicalSize, window::Window};
-
+use winit::event::WindowEvent;
 use crate::{
     camera::CameraUniform,
     scene::{InstanceRaw, Scene, Vertex},
@@ -300,7 +300,7 @@ impl GpuContext {
     }
 }
 
-struct ImguiState {
+pub struct ImguiState {
     context: dear_imgui_rs::Context,
     platform: WinitPlatform,
     renderer: WgpuRenderer,
@@ -341,6 +341,10 @@ impl<'window> ImguiState {
 
         self.platform.prepare_frame(&window, &mut self.context);
         Ok(())
+    }
+
+    pub fn handle_window_event(&mut self, window: &Window, event: &WindowEvent) {
+        self.platform.handle_window_event(&mut self.context, window, event);
     }
 }
 
