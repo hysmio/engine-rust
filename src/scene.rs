@@ -4,6 +4,9 @@ use anyhow::{Context, Result};
 use cgmath::prelude::*;
 use wgpu::util::DeviceExt;
 
+use component::transform::TransformComponent;
+use crate::entity::{Entity, EntityId};
+
 use crate::{
     camera::{Camera, CameraUniform},
     renderer::GpuContext,
@@ -18,64 +21,11 @@ const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
 );
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct EntityId(u32);
-
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct MeshHandle(usize);
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct MaterialHandle(usize);
 
-#[derive(Debug)]
-pub struct Entity {
-    pub id: EntityId,
-    pub name: Option<String>,
-    pub parent: Option<EntityId>,
-    pub children: Vec<EntityId>,
-}
-
-#[derive(Clone, Debug)]
-pub struct TransformComponent {
-    pub translation: cgmath::Vector3<f32>,
-    pub rotation: cgmath::Quaternion<f32>,
-    pub scale: cgmath::Vector3<f32>,
-}
-
-impl TransformComponent {
-    pub fn identity() -> Self {
-        Self {
-            translation: cgmath::Vector3::new(0.0, 0.0, 0.0),
-            rotation: cgmath::Quaternion::from_axis_angle(
-                cgmath::Vector3::unit_z(),
-                cgmath::Deg(0.0),
-            ),
-            scale: cgmath::Vector3::new(1.0, 1.0, 1.0),
-        }
-    }
-
-    pub fn from_translation_rotation(
-        translation: cgmath::Vector3<f32>,
-        rotation: cgmath::Quaternion<f32>,
-    ) -> Self {
-        Self {
-            translation,
-            rotation,
-            scale: cgmath::Vector3::new(1.0, 1.0, 1.0),
-        }
-    }
-
-    pub fn matrix(&self) -> cgmath::Matrix4<f32> {
-        cgmath::Matrix4::from_translation(self.translation)
-            * cgmath::Matrix4::from(self.rotation)
-            * cgmath::Matrix4::from_nonuniform_scale(self.scale.x, self.scale.y, self.scale.z)
-    }
-}
-
-impl Default for TransformComponent {
-    fn default() -> Self {
-        Self::identity()
-    }
-}
 
 #[derive(Clone, Copy, Debug)]
 pub struct MeshRendererComponent {
@@ -243,8 +193,6 @@ pub struct RenderBatch {
 
 #[derive(Default)]
 pub struct Scene {
-    next_entity_id: u32,
-    pub entities: HashMap<EntityId, Entity>,
     pub transforms: HashMap<EntityId, TransformComponent>,
     pub mesh_renderers: HashMap<EntityId, MeshRendererComponent>,
     pub cameras: HashMap<EntityId, CameraComponent>,
@@ -308,29 +256,6 @@ impl Scene {
 
         scene.rebuild_render_batches(ctx);
         Ok(scene)
-    }
-
-    pub fn spawn(&mut self, name: Option<String>, parent: Option<EntityId>) -> EntityId {
-        let id = EntityId(self.next_entity_id);
-        self.next_entity_id += 1;
-
-        self.entities.insert(
-            id,
-            Entity {
-                id,
-                name,
-                parent,
-                children: Vec::new(),
-            },
-        );
-
-        if let Some(parent_id) = parent {
-            if let Some(parent_entity) = self.entities.get_mut(&parent_id) {
-                parent_entity.children.push(id);
-            }
-        }
-
-        id
     }
 
     pub fn set_transform(&mut self, entity: EntityId, transform: TransformComponent) {

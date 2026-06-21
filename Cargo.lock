@@ -354,6 +354,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "component"
+version = "0.1.0"
+dependencies = [
+ "cgmath",
+ "component_derive",
+]
+
+[[package]]
+name = "component_derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "concurrent-queue"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -582,6 +598,7 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "cgmath",
+ "component",
  "console_error_panic_hook",
  "console_log",
  "dear-imgui-rs",

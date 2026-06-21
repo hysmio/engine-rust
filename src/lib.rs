@@ -20,6 +20,8 @@ pub mod renderer;
 pub mod scene;
 pub mod texture;
 pub mod window;
+pub mod world;
+pub mod entity;
 
 pub struct App {
     #[cfg(target_arch = "wasm32")]
