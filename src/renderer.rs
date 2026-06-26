@@ -5,18 +5,19 @@ use log::debug;
 use std::default::Default;
 use std::{path::PathBuf, sync::Arc, time::Instant};
 
-use anyhow::{Context, Result};
-use wgpu::{util::DeviceExt, CurrentSurfaceTexture};
-use wgpu::{
-    BackendOptions, Dx12BackendOptions, ExperimentalFeatures, GlBackendOptions, InstanceFlags,
-    MemoryBudgetThresholds, NoopBackendOptions, SurfaceConfiguration, TextureFormat,
-};
-use winit::{dpi::PhysicalSize, window::Window};
-use winit::event::WindowEvent;
+use crate::world::World;
 use crate::{
     camera::CameraUniform,
     scene::{InstanceRaw, Scene, Vertex},
 };
+use anyhow::{Context, Result};
+use wgpu::{
+    BackendOptions, Dx12BackendOptions, ExperimentalFeatures, GlBackendOptions, InstanceFlags,
+    MemoryBudgetThresholds, NoopBackendOptions, SurfaceConfiguration, TextureFormat,
+};
+use wgpu::{CurrentSurfaceTexture, util::DeviceExt};
+use winit::event::WindowEvent;
+use winit::{dpi::PhysicalSize, window::Window};
 
 pub struct Renderer<'window> {
     pub window: Arc<winit::window::Window>,
@@ -114,12 +115,12 @@ impl<'window> Renderer<'window> {
         self.surface.resize(ctx, size);
     }
 
-    pub fn render(&mut self, ctx: &GpuContext, scene: &Scene) -> Option<CurrentSurfaceTexture> {
+    pub fn render(&mut self, ctx: &GpuContext, world: &World) -> Option<CurrentSurfaceTexture> {
         if !self.surface.is_configured {
             return None;
         }
 
-        if let Some(camera_uniform) = scene.active_camera_uniform() {
+        if let Some(camera_uniform) = world.active_camera_uniform() {
             ctx.queue.write_buffer(
                 &self.resources.camera_buffer,
                 0,
@@ -198,11 +199,11 @@ impl<'window> Renderer<'window> {
             render_pass.set_pipeline(&self.resources.render_pipeline);
             render_pass.set_bind_group(1, &self.resources.camera_bind_group, &[]);
 
-            for batch in &scene.render_batches {
-                let Some(mesh) = scene.mesh(batch.mesh) else {
+            for batch in &world.render_batches {
+                let Some(mesh) = world.mesh(batch.mesh) else {
                     continue;
                 };
-                let Some(material) = scene.material(batch.material) else {
+                let Some(material) = world.material(batch.material) else {
                     continue;
                 };
 
@@ -344,7 +345,8 @@ impl<'window> ImguiState {
     }
 
     pub fn handle_window_event(&mut self, window: &Window, event: &WindowEvent) {
-        self.platform.handle_window_event(&mut self.context, window, event);
+        self.platform
+            .handle_window_event(&mut self.context, window, event);
     }
 }
 

@@ -4,8 +4,8 @@ use anyhow::{Context, Result};
 use cgmath::prelude::*;
 use wgpu::util::DeviceExt;
 
+use crate::entity::EntityId;
 use component::transform::TransformComponent;
-use crate::entity::{Entity, EntityId};
 
 use crate::{
     camera::{Camera, CameraUniform},
@@ -25,7 +25,6 @@ pub struct MeshHandle(usize);
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct MaterialHandle(usize);
-
 
 #[derive(Clone, Copy, Debug)]
 pub struct MeshRendererComponent {
@@ -227,9 +226,9 @@ impl Scene {
         )?);
 
         let camera = Camera::new((0.0, 5.0, 10.0).into(), (0.0, 0.0, 0.0).into(), aspect);
-        let camera_entity = scene.spawn(Some("Main Camera".to_owned()), None);
-        scene.add_camera(camera_entity, CameraComponent::new(camera));
-        scene.active_camera = Some(camera_entity);
+        // let camera_entity = scene.spawn(Some("Main Camera".to_owned()), None);
+        // scene.add_camera(camera_entity, CameraComponent::new(camera));
+        // scene.active_camera = Some(camera_entity);
 
         for z in 0..NUM_INSTANCES_PER_ROW {
             for x in 0..NUM_INSTANCES_PER_ROW {
@@ -245,12 +244,12 @@ impl Scene {
                     cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(45.0))
                 };
 
-                let entity = scene.spawn(Some(format!("Pentagon {x},{z}")), None);
-                scene.set_transform(
-                    entity,
-                    TransformComponent::from_translation_rotation(position, rotation),
-                );
-                scene.add_mesh_renderer(entity, MeshRendererComponent { mesh, material });
+                // let entity = scene.spawn(Some(format!("Pentagon {x},{z}")), None);
+                // scene.set_transform(
+                //     entity,
+                //     TransformComponent::from_translation_rotation(position, rotation),
+                // );
+                // scene.add_mesh_renderer(entity, MeshRendererComponent { mesh, material });
             }
         }
 

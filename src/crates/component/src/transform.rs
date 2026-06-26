@@ -1,6 +1,6 @@
+use crate::{Component, IntoPropertyType, PropertyDescriptor};
 use cgmath::{Rotation3, Vector3};
-use crate::{Component, PropertyDescriptor};
-use component_derive::Component;
+use component_derive::*;
 
 #[derive(Clone, Debug, Component)]
 pub struct TransformComponent {

@@ -13,19 +13,20 @@ use crate::{
     renderer::{GpuContext, Renderer},
     scene::Scene,
     window::{WindowService, WindowState},
+    world::World,
 };
 
 pub struct Engine<'window> {
     pub ctx: GpuContext,
     pub windows: WindowService<'window>,
     pub input: InputService,
-    pub scene: Scene,
+    pub world: World,
 }
 
 impl Engine<'static> {
     pub async fn new(first_window: Arc<Window>) -> Result<Self> {
         let (ctx, renderer) = GpuContext::new(first_window.clone()).await?;
-        let scene = Scene::default_instanced(
+        let scene = World::default_instanced(
             &ctx,
             renderer.texture_bind_group_layout(),
             renderer.surface.aspect(),
@@ -37,7 +38,7 @@ impl Engine<'static> {
             ctx,
             windows,
             input: InputService::new(),
-            scene,
+            world,
         })
     }
 
@@ -52,8 +53,8 @@ impl<'window> Engine<'window> {
         if let Some(window) = self.windows.get_mut(id) {
             window.resize(&self.ctx, size);
             if window.renderer.surface.is_configured {
-                self.scene
-                    .set_active_camera_aspect(window.renderer.surface.aspect());
+                // self.scene
+                //     .set_active_camera_aspect(window.renderer.surface.aspect());
             }
         }
     }
@@ -68,10 +69,10 @@ impl<'window> Engine<'window> {
             return None;
         };
 
-        window.renderer.render(&self.ctx, &self.scene)
+        window.renderer.render(&self.ctx, &self.world)
     }
 
     pub fn rebuild_scene_render_batches(&mut self) {
-        self.scene.rebuild_render_batches(&self.ctx);
+        // self.scene.rebuild_render_batches(&self.ctx);
     }
 }
