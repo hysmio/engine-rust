@@ -11,7 +11,6 @@ use winit::{
 use crate::{
     input::InputService,
     renderer::{GpuContext, Renderer},
-    scene::Scene,
     window::{WindowService, WindowState},
     world::World,
 };
@@ -26,11 +25,7 @@ pub struct Engine<'window> {
 impl Engine<'static> {
     pub async fn new(first_window: Arc<Window>) -> Result<Self> {
         let (ctx, renderer) = GpuContext::new(first_window.clone()).await?;
-        let scene = World::default_instanced(
-            &ctx,
-            renderer.texture_bind_group_layout(),
-            renderer.surface.aspect(),
-        )?;
+        let world = World::empty(renderer.surface.aspect());
         let mut windows = WindowService::new();
         windows.insert(WindowState::new(first_window, renderer));
 

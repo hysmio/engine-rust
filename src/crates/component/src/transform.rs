@@ -4,11 +4,8 @@ use component_derive::*;
 
 #[derive(Clone, Debug, Component)]
 pub struct TransformComponent {
-    #[property]
     pub translation: Vector3<f32>,
-    #[property]
     pub rotation: cgmath::Quaternion<f32>,
-    #[property]
     pub scale: cgmath::Vector3<f32>,
 }
 

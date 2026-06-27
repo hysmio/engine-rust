@@ -19,8 +19,10 @@ log = "0.4"
 pollster = "0.3"
 wgpu = "29.0.3"
 winit = { version = "0.30", features = ["android-native-activity"] }
-component = { path = "src/crates/component" }
 rand = "0.10.1"
+asset = { path = "src/crates/asset" }
+component = { path = "src/crates/component" }
+component_derive = { path = "src/crates/component_derive" }
 
 [dependencies.image]
 version = "0.24"

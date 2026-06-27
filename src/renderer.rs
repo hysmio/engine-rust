@@ -5,10 +5,10 @@ use log::debug;
 use std::default::Default;
 use std::{path::PathBuf, sync::Arc, time::Instant};
 
-use crate::world::World;
 use crate::{
     camera::CameraUniform,
     scene::{InstanceRaw, Scene, Vertex},
+    world::World,
 };
 use anyhow::{Context, Result};
 use wgpu::{
@@ -115,6 +115,46 @@ impl<'window> Renderer<'window> {
         self.surface.resize(ctx, size);
     }
 
+    // pub fn rebuild_render_batches(&mut self, ctx: &GpuContext) {
+    //     let mut grouped_instances: BTreeMap<(MeshHandle, MaterialHandle), Vec<InstanceRaw>> =
+    //         BTreeMap::new();
+
+    //     for (entity, renderer) in &self.mesh_renderers {
+    //         let Some(transform) = self.transforms.get(entity) else {
+    //             continue;
+    //         };
+
+    //         grouped_instances
+    //             .entry((renderer.mesh, renderer.material))
+    //             .or_default()
+    //             .push(InstanceRaw::from_transform(transform));
+    //     }
+
+    //     self.render_batches = grouped_instances
+    //         .into_iter()
+    //         .filter_map(|((mesh, material), instances)| {
+    //             if instances.is_empty() {
+    //                 return None;
+    //             }
+
+    //             let instance_buffer =
+    //                 ctx.device
+    //                     .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+    //                         label: Some("Instance Buffer"),
+    //                         contents: bytemuck::cast_slice(&instances),
+    //                         usage: wgpu::BufferUsages::VERTEX,
+    //                     });
+
+    //             Some(RenderBatch {
+    //                 mesh,
+    //                 material,
+    //                 instance_buffer,
+    //                 instance_count: instances.len() as u32,
+    //             })
+    //         })
+    //         .collect();
+    // }
+
     pub fn render(&mut self, ctx: &GpuContext, world: &World) -> Option<CurrentSurfaceTexture> {
         if !self.surface.is_configured {
             return None;
@@ -199,21 +239,21 @@ impl<'window> Renderer<'window> {
             render_pass.set_pipeline(&self.resources.render_pipeline);
             render_pass.set_bind_group(1, &self.resources.camera_bind_group, &[]);
 
-            for batch in &world.render_batches {
-                let Some(mesh) = world.mesh(batch.mesh) else {
-                    continue;
-                };
-                let Some(material) = world.material(batch.material) else {
-                    continue;
-                };
+            // for batch in &world.render_batches {
+            //     let Some(mesh) = world.mesh(batch.mesh) else {
+            //         continue;
+            //     };
+            //     let Some(material) = world.material(batch.material) else {
+            //         continue;
+            //     };
 
-                render_pass.set_bind_group(0, &material.bind_group, &[]);
-                render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                render_pass.set_vertex_buffer(1, batch.instance_buffer.slice(..));
-                render_pass
-                    .set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-                render_pass.draw_indexed(0..mesh.index_count, 0, 0..batch.instance_count);
-            }
+            //     render_pass.set_bind_group(0, &material.bind_group, &[]);
+            //     render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            //     render_pass.set_vertex_buffer(1, batch.instance_buffer.slice(..));
+            //     render_pass
+            //         .set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            //     render_pass.draw_indexed(0..mesh.index_count, 0, 0..batch.instance_count);
+            // }
 
             // Call new_frame before rendering
             self.imgui

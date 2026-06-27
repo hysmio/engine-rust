@@ -5,7 +5,9 @@ use cgmath::prelude::*;
 use wgpu::util::DeviceExt;
 
 use crate::entity::EntityId;
-use component::transform::TransformComponent;
+use asset::AssetId;
+use component::{Component, IntoPropertyType, PropertyDescriptor, transform::TransformComponent};
+use component_derive::*;
 
 use crate::{
     camera::{Camera, CameraUniform},
@@ -26,20 +28,25 @@ pub struct MeshHandle(usize);
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct MaterialHandle(usize);
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Component)]
 pub struct MeshRendererComponent {
-    pub mesh: MeshHandle,
-    pub material: MaterialHandle,
+    pub mesh: AssetId,
+    pub material: AssetId,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Component, Default)]
 pub struct CameraComponent {
+    #[property(hidden)]
     pub camera: Camera,
 }
 
 impl CameraComponent {
     pub fn new(camera: Camera) -> Self {
         Self { camera }
+    }
+
+    pub fn uniform(&self) -> CameraUniform {
+        CameraUniform::from_camera(&self.camera)
     }
 }
 
@@ -206,56 +213,56 @@ impl Scene {
         Self::default()
     }
 
-    pub fn default_instanced(
-        ctx: &GpuContext,
-        texture_bind_group_layout: &wgpu::BindGroupLayout,
-        aspect: f32,
-    ) -> Result<Self> {
-        let mut scene = Self::new();
-        let mesh = scene.add_mesh(Mesh::new(
-            ctx,
-            "Pentagon",
-            PENTAGON_VERTICES,
-            PENTAGON_INDICES,
-        ));
-        let material = scene.add_material(Material::from_texture_bytes(
-            ctx,
-            texture_bind_group_layout,
-            include_bytes!("happy-tree.png"),
-            "happy-tree.png",
-        )?);
+    // pub fn default_instanced(
+    //     ctx: &GpuContext,
+    //     texture_bind_group_layout: &wgpu::BindGroupLayout,
+    //     aspect: f32,
+    // ) -> Result<Self> {
+    //     let mut scene = Self::new();
+    //     let mesh = scene.add_mesh(Mesh::new(
+    //         ctx,
+    //         "Pentagon",
+    //         PENTAGON_VERTICES,
+    //         PENTAGON_INDICES,
+    //     ));
+    //     let material = scene.add_material(Material::from_texture_bytes(
+    //         ctx,
+    //         texture_bind_group_layout,
+    //         include_bytes!("happy-tree.png"),
+    //         "happy-tree.png",
+    //     )?);
 
-        let camera = Camera::new((0.0, 5.0, 10.0).into(), (0.0, 0.0, 0.0).into(), aspect);
-        // let camera_entity = scene.spawn(Some("Main Camera".to_owned()), None);
-        // scene.add_camera(camera_entity, CameraComponent::new(camera));
-        // scene.active_camera = Some(camera_entity);
+    //     let camera = Camera::new((0.0, 5.0, 10.0).into(), (0.0, 0.0, 0.0).into(), aspect);
+    //     let camera_entity = scene.spawn(Some("Main Camera".to_owned()), None);
+    //     scene.add_camera(camera_entity, CameraComponent::new(camera));
+    //     scene.active_camera = Some(camera_entity);
 
-        for z in 0..NUM_INSTANCES_PER_ROW {
-            for x in 0..NUM_INSTANCES_PER_ROW {
-                let position = cgmath::Vector3 {
-                    x: x as f32,
-                    y: 0.0,
-                    z: z as f32,
-                } - INSTANCE_DISPLACEMENT;
+    //     for z in 0..NUM_INSTANCES_PER_ROW {
+    //         for x in 0..NUM_INSTANCES_PER_ROW {
+    //             let position = cgmath::Vector3 {
+    //                 x: x as f32,
+    //                 y: 0.0,
+    //                 z: z as f32,
+    //             } - INSTANCE_DISPLACEMENT;
 
-                let rotation = if position.is_zero() {
-                    cgmath::Quaternion::from_axis_angle(cgmath::Vector3::unit_z(), cgmath::Deg(0.0))
-                } else {
-                    cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(45.0))
-                };
+    //             let rotation = if position.is_zero() {
+    //                 cgmath::Quaternion::from_axis_angle(cgmath::Vector3::unit_z(), cgmath::Deg(0.0))
+    //             } else {
+    //                 cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(45.0))
+    //             };
 
-                // let entity = scene.spawn(Some(format!("Pentagon {x},{z}")), None);
-                // scene.set_transform(
-                //     entity,
-                //     TransformComponent::from_translation_rotation(position, rotation),
-                // );
-                // scene.add_mesh_renderer(entity, MeshRendererComponent { mesh, material });
-            }
-        }
+    // let entity = scene.spawn(Some(format!("Pentagon {x},{z}")), None);
+    // scene.set_transform(
+    //     entity,
+    //     TransformComponent::from_translation_rotation(position, rotation),
+    // );
+    // scene.add_mesh_renderer(entity, MeshRendererComponent { mesh, material });
+    //     }
+    // }
 
-        scene.rebuild_render_batches(ctx);
-        Ok(scene)
-    }
+    //     scene.rebuild_render_batches(ctx);
+    //     Ok(scene)
+    // }
 
     pub fn set_transform(&mut self, entity: EntityId, transform: TransformComponent) {
         self.transforms.insert(entity, transform);
@@ -301,46 +308,6 @@ impl Scene {
                 camera.camera.set_aspect(aspect);
             }
         }
-    }
-
-    pub fn rebuild_render_batches(&mut self, ctx: &GpuContext) {
-        let mut grouped_instances: BTreeMap<(MeshHandle, MaterialHandle), Vec<InstanceRaw>> =
-            BTreeMap::new();
-
-        for (entity, renderer) in &self.mesh_renderers {
-            let Some(transform) = self.transforms.get(entity) else {
-                continue;
-            };
-
-            grouped_instances
-                .entry((renderer.mesh, renderer.material))
-                .or_default()
-                .push(InstanceRaw::from_transform(transform));
-        }
-
-        self.render_batches = grouped_instances
-            .into_iter()
-            .filter_map(|((mesh, material), instances)| {
-                if instances.is_empty() {
-                    return None;
-                }
-
-                let instance_buffer =
-                    ctx.device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("Instance Buffer"),
-                            contents: bytemuck::cast_slice(&instances),
-                            usage: wgpu::BufferUsages::VERTEX,
-                        });
-
-                Some(RenderBatch {
-                    mesh,
-                    material,
-                    instance_buffer,
-                    instance_count: instances.len() as u32,
-                })
-            })
-            .collect();
     }
 
     pub fn validate(&self) -> Result<()> {

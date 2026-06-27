@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+asset = { path = "../asset" }
 cgmath = "0.18.0"
 component_derive = { version = "0.1.0", path = "../component_derive" }

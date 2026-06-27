@@ -19,6 +19,12 @@ pub struct Camera {
     pub zfar: f32,
 }
 
+impl Default for Camera {
+    fn default() -> Self {
+        return Camera::new((0.0, 5.0, 10.0).into(), (0.0, 0.0, 0.0).into(), 1.0);
+    }
+}
+
 impl Camera {
     pub fn new(eye: cgmath::Point3<f32>, target: cgmath::Point3<f32>, aspect: f32) -> Self {
         Self {

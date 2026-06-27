@@ -1,6 +1,4 @@
-use std::any::TypeId;
-
-use crate::PropertyType::F32;
+use asset::AssetId;
 
 pub mod transform;
 
@@ -21,6 +19,7 @@ pub enum PropertyType {
     Bool,
     String,
     Quat,
+    AssetRef,
 }
 
 // pub enum PropertyValue {
@@ -111,9 +110,15 @@ impl IntoPropertyType for bool {
     const PROPERTY_TYPE: PropertyType = PropertyType::Bool;
 }
 
+impl IntoPropertyType for AssetId {
+    const PROPERTY_TYPE: PropertyType = PropertyType::AssetRef;
+}
+
 pub trait Component {
     fn name(&self) -> &'static str;
-    fn type_id(&self) -> TypeId;
+
+    fn as_any(&self) -> &dyn std::any::Any;
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 
     fn properties(&self) -> Vec<PropertyDescriptor> {
         vec![PropertyDescriptor {

@@ -13,15 +13,16 @@ use wasm_bindgen::prelude::*;
 
 use crate::engine::Engine;
 
+pub mod asset;
 pub mod camera;
 pub mod engine;
+pub mod entity;
 pub mod input;
 pub mod renderer;
 pub mod scene;
 pub mod texture;
 pub mod window;
 pub mod world;
-pub mod entity;
 
 pub struct App {
     #[cfg(target_arch = "wasm32")]
@@ -85,13 +86,15 @@ impl ApplicationHandler<Engine<'static>> for App {
         {
             if let Some(proxy) = self.proxy.take() {
                 wasm_bindgen_futures::spawn_local(async move {
-                    assert!(proxy
-                        .send_event(
-                            Engine::new(window)
-                                .await
-                                .expect("Unable to create canvas!!!"),
-                        )
-                        .is_ok())
+                    assert!(
+                        proxy
+                            .send_event(
+                                Engine::new(window)
+                                    .await
+                                    .expect("Unable to create canvas!!!"),
+                            )
+                            .is_ok()
+                    )
                 });
             }
         }
