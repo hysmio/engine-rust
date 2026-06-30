@@ -13,7 +13,6 @@ use wasm_bindgen::prelude::*;
 
 use crate::engine::Engine;
 
-pub mod asset;
 pub mod camera;
 pub mod engine;
 pub mod entity;

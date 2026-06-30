@@ -25,7 +25,7 @@ impl<T: Clone> ComponentStore<T> {
 
     fn insert(&mut self, entity: EntityId, component: T) {
         let new_index = self.dense.len();
-        if (entity.0 as usize) < self.sparse.len() {
+        if (entity.0 as usize) >= self.sparse.len() {
             self.sparse.resize(entity.0 as usize + 1, None);
         }
         
