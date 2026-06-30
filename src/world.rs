@@ -12,18 +12,37 @@ pub struct ComponentStore<T> {
     data: Vec<T>,
 }
 
+pub struct Iter<'a, T> {
+    inner: std::iter::Zip<std::slice::Iter<'a, EntityId>, std::slice::Iter<'a, T>>,
+}
+
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = (EntityId, &'a T);
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().map(|(&e, c)| (e, c))
+    }
+}
+
+impl<'a, T> IntoIterator for &'a ComponentStore<T> {
+    type Item = (EntityId, &'a T);
+    type IntoIter = Iter<'a, T>;
+    fn into_iter(self) -> Self::IntoIter {
+        Iter { inner: self.dense.iter().zip(self.data.iter()) }
+    }
+}
+
 impl<T: Clone> ComponentStore<T> {
-    fn get(&self, entity: EntityId) -> Option<&T> {
+    pub fn get(&self, entity: EntityId) -> Option<&T> {
         let slot = (*self.sparse.get(entity.0 as usize)?)?;
         Some(&self.data[slot])
     }
 
-    fn get_mut(&mut self, entity: EntityId) -> Option<&mut T> {
+    pub fn get_mut(&mut self, entity: EntityId) -> Option<&mut T> {
         let slot = (*self.sparse.get(entity.0 as usize)?)?;
         self.data.get_mut(slot)
     }
 
-    fn insert(&mut self, entity: EntityId, component: T) {
+    pub fn insert(&mut self, entity: EntityId, component: T) {
         let new_index = self.dense.len();
         if (entity.0 as usize) >= self.sparse.len() {
             self.sparse.resize(entity.0 as usize + 1, None);
@@ -95,6 +114,12 @@ impl World {
         arr.downcast_mut::<ComponentStore<T>>()
             .unwrap()
             .insert(entity, component);
+    }
+
+    pub fn get_component_store<T: Component + Sized + Default + Clone + 'static>(
+        &self,
+    ) -> Option<&ComponentStore<T>> {
+        self.components.get(&TypeId::of::<T>())?.downcast_ref::<ComponentStore<T>>()
     }
 
     pub fn get_component_for_entity<T: Component + Sized + Default + Clone + 'static>(

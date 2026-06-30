@@ -28,7 +28,7 @@ pub struct MeshHandle(usize);
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct MaterialHandle(usize);
 
-#[derive(Clone, Copy, Debug, Component)]
+#[derive(Clone, Copy, Debug, Component, Default)]
 pub struct MeshRendererComponent {
     pub mesh: AssetId,
     pub material: AssetId,
@@ -191,8 +191,8 @@ impl Material {
 }
 
 pub struct RenderBatch {
-    pub mesh: MeshHandle,
-    pub material: MaterialHandle,
+    pub mesh: AssetId,
+    pub material: AssetId,
     pub instance_buffer: wgpu::Buffer,
     pub instance_count: u32,
 }

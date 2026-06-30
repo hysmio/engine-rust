@@ -7,7 +7,7 @@ use std::{
 static MANAGER: std::sync::LazyLock<AssetManager> =
     std::sync::LazyLock::new(|| AssetManager::new());
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Default, Ord, PartialOrd)]
 pub struct AssetId(u32);
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
